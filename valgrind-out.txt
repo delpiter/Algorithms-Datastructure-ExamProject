@@ -1,0 +1,24 @@
+==27044== Memcheck, a memory error detector
+==27044== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==27044== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==27044== Command: ./solution asduuasd
+==27044== Parent PID: 3252
+==27044== 
+==27044== 
+==27044== HEAP SUMMARY:
+==27044==     in use at exit: 40 bytes in 1 blocks
+==27044==   total heap usage: 2 allocs, 1 frees, 1,064 bytes allocated
+==27044== 
+==27044== 40 bytes in 1 blocks are definitely lost in loss record 1 of 1
+==27044==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==27044==    by 0x10918C: main (in /home/pinacoteca/Unibo/Elaborato_Algoritmi/solution)
+==27044== 
+==27044== LEAK SUMMARY:
+==27044==    definitely lost: 40 bytes in 1 blocks
+==27044==    indirectly lost: 0 bytes in 0 blocks
+==27044==      possibly lost: 0 bytes in 0 blocks
+==27044==    still reachable: 0 bytes in 0 blocks
+==27044==         suppressed: 0 bytes in 0 blocks
+==27044== 
+==27044== For lists of detected and suppressed errors, rerun with: -s
+==27044== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
