@@ -19,6 +19,24 @@ typedef struct
     int size; /* massimo numero di coppie (chiave, prio) che possono essere contenuti nello heap */
 } MinHeap;
 
+/*Matrix Structure*/
+typedef struct Cell
+{
+    int height;
+    char visited;
+    int height_difference;
+} Cell;
+
+/*Matrix that contains all the necessary data*/
+typedef struct Matrix
+{
+    int C_Cell;
+    int C_height;
+    int n; /*Number of Lines*/
+    int m; /*Number of Columns*/
+    Cell ***Matrix;
+} Matrix;
+
 /*Grapgh Structure-Adjacency List*/
 
 /* struttura arco */
@@ -47,14 +65,6 @@ typedef struct
     int *out_deg; /* grado uscente dei nodi       */
 } Graph;
 
-typedef struct Cell
-{
-    int id;
-    int x;
-    int y;
-    int height;
-} Cell;
-
 /*Test Main*/
 /*int main()
 {
@@ -71,22 +81,102 @@ typedef struct Cell
 
 }*/
 
+Matrix *matrix_init()
+{
+    Matrix *M;
+
+    M = (Matrix *)malloc(sizeof(Matrix));
+
+    M->Matrix = NULL;
+
+    return M;
+}
+
+void matrix_free(Matrix *M)
+{
+    int i, j;
+
+    for (i = 0; i < M->n; i++)
+    {
+        for (j = 0; j < M->m; j++)
+        {
+            free(M->Matrix[i][j]);
+        }
+        free(M->Matrix[i]);
+    }
+    free(M->Matrix);
+    free(M);
+}
+
+void read_input_file(FILE *filein, Matrix *M)
+{
+    int i, j;
+
+    fscanf(filein, "%d", &M->C_Cell);
+    fscanf(filein, "%d", &M->C_height);
+    fscanf(filein, "%d", &M->n);
+    fscanf(filein, "%d", &M->m);
+
+    M->Matrix = (Cell ***)malloc(M->n * (sizeof(Cell **))); /*Allocate Memory for the lines of the Matrix*/
+    for (i = 0; i < M->n; i++)
+    {
+        M->Matrix[i] = (Cell **)malloc(M->m * (sizeof(Cell *))); /*Allocate Memory for the columns of the Matrix*/
+        for (j = 0; j < M->m; j++)
+        {
+            M->Matrix[i][j] = (Cell *)malloc(sizeof(Cell)); /*Allocate Memory for each cell of the Matrix*/
+
+            fscanf(filein, "%d", &(M->Matrix[i][j]->height));
+            M->Matrix[i][j]->height_difference = -1;
+            M->Matrix[i][j]->visited = 0;
+        }
+    }
+}
+
+void print_matrix(Matrix *M)
+{
+    int i, j;
+
+    fprintf(stdout, "C_cell: %d\n", M->C_Cell);
+    fprintf(stdout, "C_height: %d\n", M->C_height);
+    fprintf(stdout, "n: %d\n", M->n);
+    fprintf(stdout, "m: %d\n", M->m);
+
+    for (i = 0; i < M->n; i++)
+    {
+        for (j = 0; j < M->m; j++)
+        {
+            fprintf(stdout, "%d\t", M->Matrix[i][j]->height);
+        }
+        fprintf(stdout, "\n");
+    }
+}
+
 int main(int argc, char *argv[])
 {
-    int src = 0;
-    int *memLeakTest = (int *)malloc(10 * sizeof(int));
-    int a;
-    char *filename;
+    FILE *filein;
+    Matrix *M = matrix_init();
 
-    filename = argv[1];
-    printf("%s\n", filename);
+    if (argc != 2)
+    {
+        fprintf(stderr, "Input Syntax Error");
+        return EXIT_FAILURE;
+    }
 
-    printf("ciao\n");
+    if (strcmp(argv[1], "-") != 0)
+    {
+        filein = fopen(argv[1], "r");
+        if (filein == NULL)
+        {
+            fprintf(stderr, "Can not open %s\n", argv[1]);
+            return EXIT_FAILURE;
+        }
+    }
 
-    memLeakTest[0] = 5;
-    a = memLeakTest[0];
-    memLeakTest[1] = a;
-    memLeakTest[2] = src;
+    read_input_file(filein, M);
 
+    fclose(filein);
+    print_matrix(M);
+
+    matrix_free(M);
     return EXIT_SUCCESS;
 }
