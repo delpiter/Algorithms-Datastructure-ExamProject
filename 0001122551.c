@@ -26,6 +26,9 @@ typedef struct
 {
     int key;
     int prio;
+    /*The coordinates of the cell, only used for a faster access to the matrix*/
+    int x_axis;
+    int y_axis;
 } HeapElem;
 
 typedef struct
@@ -229,6 +232,8 @@ static void minheap_increase_space(MinHeap *h)
     h->heap = (HeapElem *)realloc(h->heap, (h->size + 15) * sizeof(*(h->heap)));
     h->size = h->size + 15;
 
+    h->pos = (int *)realloc(h->pos, (h->size + 15) * sizeof(*(h->pos)));
+
     assert(h != NULL);
 }
 
@@ -241,7 +246,7 @@ static void minheap_increase_space(MinHeap *h)
  * key -> The key of the element
  * prio -> The priority of the element
  */
-void minheap_insert(MinHeap *h, int key, int prio)
+void minheap_insert(MinHeap *h, int key, int prio, int x, int y)
 {
     int i;
 
@@ -255,6 +260,8 @@ void minheap_insert(MinHeap *h, int key, int prio)
     h->pos[key] = i;
     h->heap[i].key = key;
     h->heap[i].prio = prio;
+    h->heap[i].x_axis = x;
+    h->heap[i].y_axis = y;
     move_up(h, i);
 }
 
@@ -406,6 +413,22 @@ void print_matrix(Matrix *M)
 Solution *Dijkstra(Matrix *M)
 {
     Solution *sol;
+    MinHeap *Q = minheap_create(M->m + M->n);
+    HeapElem u;
+    int i;
+
+    assert(M == NULL);
+
+    /*Set the distance from the surce = 0*/
+    M->Matrix[0][0]->shortest_dist_from_origin = 0;
+
+    minheap_insert(Q, M->Matrix[0][0]->id, 0, 0, 0);
+
+    while (!minheap_is_empty(Q))
+    {
+        u = minheap_delete_min(Q);
+        M->Matrix[u.x_axis][u.y_axis]->visited = 1;
+    }
 
     return sol;
 }
