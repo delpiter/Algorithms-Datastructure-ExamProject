@@ -21,18 +21,11 @@
 #include <math.h>
 #include <limits.h>
 
-/*Struct needed for the solution*/
-typedef struct Pair
-{
-    int x;
-    int y;
-} Pair;
-
 /*Priority Queue Structure-Min-Heap*/
 typedef struct
 {
     int key;
-    int prio;
+    long int prio;
     /*The coordinates of the cell, only used for a faster access to the matrix*/
     int x_axis;
     int y_axis;
@@ -52,8 +45,8 @@ typedef struct Cell
     int id;
     int height;
     char visited;
-    int shortest_dist_from_origin;
-    Cell *predecessor;
+    long int shortest_dist_from_origin;
+    struct Cell *predecessor;
 } Cell;
 
 /*Matrix that contains all the necessary data*/
@@ -67,6 +60,24 @@ typedef struct Matrix
 } Matrix;
 
 /*Min-Heap Structure Functions*/
+
+/*
+ * Clears all the Min-Heap Structure
+ *
+ * --------------------------
+ *
+ * h -> The pointer to the Min-Heap Structure
+ */
+void minheap_clear(MinHeap *h)
+{
+    int i;
+    assert(h != NULL);
+    for (i = 0; i < h->size; i++)
+    {
+        h->pos[i] = -1;
+    }
+    h->n = 0;
+}
 
 /*
  * Initializes a Min-Heap Structure
@@ -153,6 +164,63 @@ static int valid(const MinHeap *h, int i)
 }
 
 /*
+ * Support Function: Returns the index (in the array) of the left child
+ *
+ * --------------------------
+ *
+ * h -> The pointer to the heap structure
+ * i -> The index of the parent
+ */
+static int lchild(const MinHeap *h, int i)
+{
+    assert(valid(h, i));
+
+    return 2 * i + 1;
+}
+
+/*
+ * Support Function: Returns the index (in the array) of the right child
+ *
+ * --------------------------
+ *
+ * h -> The pointer to the heap structure
+ * i -> The index of the parent
+ */
+static int rchild(const MinHeap *h, int i)
+{
+    assert(valid(h, i));
+
+    return 2 * i + 2;
+}
+
+/*
+ * Support Function: Returns the index (in the array) of the child with the lowest priority
+ *
+ * --------------------------
+ *
+ * h -> The pointer to the heap structure
+ * i -> The index of the parent
+ */
+static int min_child(const MinHeap *h, int i)
+{
+    int l, r, result = -1;
+
+    assert(valid(h, i));
+
+    l = lchild(h, i);
+    r = rchild(h, i);
+    if (valid(h, l))
+    {
+        result = l;
+        if (valid(h, r) && (h->heap[r].prio < h->heap[l].prio))
+        {
+            result = r;
+        }
+    }
+    return result;
+}
+
+/*
  * Support Function: Switches heap[i] with heap[j]
  *
  * --------------------------
@@ -216,6 +284,39 @@ static void move_up(MinHeap *h, int i)
         i = p;
         p = parent(h, i);
     }
+}
+
+/*
+ * Support Function: Swaps the element in the i-th position with his child
+ * until the element reaches the right position
+ *
+ * --------------------------
+ *
+ * h -> The pointer to the heap structure
+ * i -> The index of the element
+ */
+static void move_down(MinHeap *h, int i)
+{
+    int done = 0;
+
+    assert(valid(h, i));
+
+    /* L'operazione viene implementata iterativamente, sebbene sia
+       possibile una implementazione ricorsiva probabilmente più
+       leggibile. */
+    do
+    {
+        const int dst = min_child(h, i);
+        if (valid(h, dst) && (h->heap[dst].prio < h->heap[i].prio))
+        {
+            swap(h, i, dst);
+            i = dst;
+        }
+        else
+        {
+            done = 1;
+        }
+    } while (!done);
 }
 
 /*
@@ -447,7 +548,7 @@ static void Relax(Cell *u, Cell *v, Matrix *M)
     assert(v == NULL);
 
     /*The cost of going from the cell u to the cell v*/
-    relax_value = M->C_Cell + (M->C_height * (int)pow(u->height - v->height, 2));
+    relax_value = M->C_Cell + (M->C_height * ((u->height - v->height) * (u->height - v->height)));
 
     if (v->shortest_dist_from_origin > u->shortest_dist_from_origin + relax_value)
     {
@@ -466,11 +567,10 @@ static void Relax(Cell *u, Cell *v, Matrix *M)
  *
  * M -> The pointer to the matrix structure
  */
-static void *Dijkstra(Matrix *M)
+static void Dijkstra(Matrix *M)
 {
     MinHeap *Q = minheap_create(M->m + M->n);
     HeapElem u;
-    int i;
 
     assert(M == NULL);
 
@@ -532,13 +632,21 @@ static void *Dijkstra(Matrix *M)
     minheap_destroy(Q);
 }
 
+static void print_solution_rec(Cell *cell, FILE *output_file, int *n, int *m)
+{
+    assert(cell == NULL);
+    if (cell->id != 0)
+        print_solution_rec(cell->predecessor, output_file, n, m);
+
+    fprintf(output_file, "%d %d\n", (int)(cell->id / *(n)), cell->id % *(m));
+}
 static void print_solution(Matrix *M, FILE *output_file)
 {
-    Cell *current_cell = M->Matrix[M->n - 1][M->n - 1];
-    int id = current_cell->id;
-    while (id != 0)
-    {
-    }
+    assert(M == NULL);
+
+    print_solution_rec(M->Matrix[M->n - 1][M->m - 1], output_file, &(M->n), &(M->m));
+    fprintf(output_file, "%d %d\n", -1, -1);
+    fprintf(output_file, "%ld", M->Matrix[M->n - 1][M->m - 1]->shortest_dist_from_origin);
 }
 
 int main(int argc, char *argv[])
