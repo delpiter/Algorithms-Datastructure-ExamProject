@@ -21,6 +21,13 @@
 #include <math.h>
 #include <limits.h>
 
+/*Struct needed for the solution*/
+typedef struct Pair
+{
+    int x;
+    int y;
+} Pair;
+
 /*Priority Queue Structure-Min-Heap*/
 typedef struct
 {
@@ -58,13 +65,6 @@ typedef struct Matrix
     int m; /*Number of Columns*/
     Cell ***Matrix;
 } Matrix;
-
-/*Data structure for the solution*/
-typedef struct Solution
-{
-    int *best_path[2];
-    long int path_cost;
-} Solution;
 
 /*Min-Heap Structure Functions*/
 
@@ -306,6 +306,8 @@ HeapElem minheap_delete_min(MinHeap *h)
     return result;
 }
 
+/*Matrix Structure Functions*/
+
 /*
  * Initializes a Matrix structure
  */
@@ -410,9 +412,62 @@ void print_matrix(Matrix *M)
     }
 }
 
-Solution *Dijkstra(Matrix *M)
+/*Problem Functions*/
+
+/*
+ * Returns true if the given value is between 0 and a specified value (0 <= i < max)
+ *
+ * --------------------------
+ *
+ * i -> The number to check
+ * max -> The upper bound of the value
+ */
+static int is_in_range(int i, int max)
 {
-    Solution *sol;
+    if (i < 0)
+        return 0;
+    if (i > max)
+        return 0;
+    return 1;
+}
+
+/*
+ * Relax Function
+ * Verifies if it is possible to improve the minimum path for the node v passing through u
+ *
+ * --------------------------
+ *
+ * u -> The pointer to the cell that could improve the path
+ * v -> The pointer to the cell of witch you want to "relax" the path
+ * M -> The pointer to the Matrix structure containing all the constant costs
+ */
+static void Relax(Cell *u, Cell *v, Matrix *M)
+{
+    int relax_value;
+    assert(v == NULL);
+
+    /*The cost of going from the cell u to the cell v*/
+    relax_value = M->C_Cell + (M->C_height * (int)pow(u->height - v->height, 2));
+
+    if (v->shortest_dist_from_origin > u->shortest_dist_from_origin + relax_value)
+    {
+        v->shortest_dist_from_origin = u->shortest_dist_from_origin + relax_value;
+        v->predecessor = u;
+    }
+}
+
+/*
+ * Dijkstra Algorithm
+ * Used to calculate the lowest cost to create a path in a matrix
+ *
+ * Uses a Matrix structure that contains all the constants and values needed to process the data
+ *
+ * --------------------------
+ *
+ * M -> The pointer to the matrix structure
+ */
+static void *Dijkstra(Matrix *M)
+{
     MinHeap *Q = minheap_create(M->m + M->n);
     HeapElem u;
     int i;
@@ -428,14 +483,68 @@ Solution *Dijkstra(Matrix *M)
     {
         u = minheap_delete_min(Q);
         M->Matrix[u.x_axis][u.y_axis]->visited = 1;
+
+        /*Upper Neighbour Cell*/
+        if (is_in_range(u.y_axis - 1, M->n) && !M->Matrix[u.y_axis - 1][u.x_axis]->visited)
+        {
+            Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis - 1][u.x_axis], M);
+            minheap_insert(Q,
+                           M->Matrix[u.y_axis - 1][u.x_axis]->id,
+                           M->Matrix[u.y_axis - 1][u.x_axis]->shortest_dist_from_origin,
+                           u.y_axis - 1,
+                           u.x_axis);
+        }
+
+        /*Right Neighbour Cell*/
+        if (is_in_range(u.x_axis + 1, M->n) && !M->Matrix[u.y_axis][u.x_axis + 1]->visited)
+        {
+            Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis][u.x_axis + 1], M);
+            minheap_insert(Q,
+                           M->Matrix[u.y_axis][u.x_axis + 1]->id,
+                           M->Matrix[u.y_axis][u.x_axis + 1]->shortest_dist_from_origin,
+                           u.y_axis,
+                           u.x_axis + 1);
+        }
+
+        /*Lower Neighbour Cell*/
+        if (is_in_range(u.y_axis + 1, M->n) && !M->Matrix[u.y_axis + 1][u.x_axis]->visited)
+        {
+            Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis + 1][u.x_axis], M);
+            minheap_insert(Q,
+                           M->Matrix[u.y_axis + 1][u.x_axis]->id,
+                           M->Matrix[u.y_axis + 1][u.x_axis]->shortest_dist_from_origin,
+                           u.y_axis + 1,
+                           u.x_axis);
+        }
+
+        /*Left Neighbour Cell*/
+        if (is_in_range(u.x_axis - 1, M->n) && !M->Matrix[u.y_axis][u.x_axis - 1]->visited)
+        {
+            Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis][u.x_axis - 1], M);
+            minheap_insert(Q,
+                           M->Matrix[u.y_axis][u.x_axis - 1]->id,
+                           M->Matrix[u.y_axis][u.x_axis - 1]->shortest_dist_from_origin,
+                           u.y_axis,
+                           u.x_axis - 1);
+        }
     }
 
-    return sol;
+    minheap_destroy(Q);
+}
+
+static void print_solution(Matrix *M, FILE *output_file)
+{
+    Cell *current_cell = M->Matrix[M->n - 1][M->n - 1];
+    int id = current_cell->id;
+    while (id != 0)
+    {
+    }
 }
 
 int main(int argc, char *argv[])
 {
     FILE *filein;
+    FILE *fileout = stdout;
 
     /*The Matrix used to calculate the best path*/
     Matrix *M = matrix_init();
@@ -462,7 +571,11 @@ int main(int argc, char *argv[])
 
     fclose(filein);
 
-    print_matrix(M);
+    Dijkstra(M);
+
+    print_solution(M, fileout);
+
+    /*print_matrix(M);*/
 
     matrix_free(M);
 
