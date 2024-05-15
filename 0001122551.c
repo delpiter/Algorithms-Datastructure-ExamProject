@@ -633,7 +633,7 @@ static void Dijkstra(Matrix *M)
     assert(M != NULL);
 
     /*Set the distance from the surce = 0*/
-    M->Matrix[0][0]->shortest_dist_from_origin = 0;
+    M->Matrix[0][0]->shortest_dist_from_origin = M->C_Cell;
 
     for (i = 0; i < M->n; i++)
     {
@@ -700,7 +700,7 @@ static void print_solution_rec(Cell *cell, FILE *output_file, int *n, int *m)
     if (cell->id != 0)
         print_solution_rec(cell->predecessor, output_file, n, m);
 
-    fprintf(output_file, "%d %d\n", (int)(cell->id / *(n)), cell->id % *(m));
+    fprintf(output_file, "%d %d:%d\n", (int)(cell->id / *(n)), cell->id % *(m), cell->id);
 }
 static void print_solution(Matrix *M, FILE *output_file)
 {
