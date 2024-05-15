@@ -61,8 +61,34 @@ typedef struct Matrix
 
 /*Min-Heap Structure Functions*/
 
+void minheap_print(const MinHeap *h)
+{
+    int i, j, width = 1;
+
+    assert(h != NULL);
+
+    printf("\n** Contenuto dello heap:\n\n");
+    printf("n=%d size=%d\n", h->n, h->size);
+    printf("Contenuto dell'array heap[] (stampato a livelli):\n");
+    i = 0;
+    while (i < h->n)
+    {
+        j = 0;
+        while (j < width && i < h->n)
+        {
+            printf("h[%2d]=(%2d:%2d, %ld) ", i, h->heap[i].y_axis, h->heap[i].x_axis, h->heap[i].prio); /*printf("h[%2d]=(%2d, %6.2ld) ", i, h->heap[i].key, h->heap[i].prio);*/
+            i++;
+            j++;
+        }
+        printf("\n");
+        width *= 2;
+    }
+    printf("\n\n** Fine contenuto dello heap\n\n");
+}
+
 /*
  * Clears all the Min-Heap Structure
+ * Basically just resets the number of items inside the heap, the data will then be overwritten
  *
  * --------------------------
  *
@@ -326,17 +352,15 @@ static void move_down(MinHeap *h, int i)
  *
  * h -> The pointer to the minheap Structure
  */
-static void minheap_increase_space(MinHeap *h)
+/*static void minheap_increase_space(MinHeap *h)
 {
     assert(h != NULL);
 
     h->heap = (HeapElem *)realloc(h->heap, (h->size + 15) * sizeof(*(h->heap)));
     h->size = h->size + 15;
 
-    h->pos = (int *)realloc(h->pos, (h->size + 15) * sizeof(*(h->pos)));
-
     assert(h != NULL);
-}
+}*/
 
 /*
  * Inserts a new element (key, prio) in the heap structure
@@ -347,13 +371,15 @@ static void minheap_increase_space(MinHeap *h)
  * key -> The key of the element
  * prio -> The priority of the element
  */
-void minheap_insert(MinHeap *h, int key, int prio, int x, int y)
+void minheap_insert(MinHeap *h, int key, long int prio, int x, int y)
 {
     int i;
 
-    if (minheap_is_full(h))
+    /*if (minheap_is_full(h))
         minheap_increase_space(h);
+    */
 
+    assert(!minheap_is_full(h));
     assert((key >= 0) && (key < h->size));
     assert(h->pos[key] == -1);
 
@@ -405,6 +431,33 @@ HeapElem minheap_delete_min(MinHeap *h)
         move_down(h, 0);
     }
     return result;
+}
+
+/*
+ * Changes the priority assiated with a key
+ * The new priority can be >,< or = to the previews one
+ *
+ * --------------------------
+ *
+ * h -> The pointer to the Min-Heap structure
+ * key -> The key of the element whose priority needs to be changed
+ * newprio ->
+ */
+void minheap_change_prio(MinHeap *h, int key, long int newprio)
+{
+    int j;
+    long int oldprio;
+
+    assert(h != NULL);
+    assert(key >= 0 && key < h->size);
+    j = h->pos[key];
+    assert(valid(h, j));
+    oldprio = h->heap[j].prio;
+    h->heap[j].prio = newprio;
+    if (newprio > oldprio)
+        move_down(h, j);
+    else
+        move_up(h, j);
 }
 
 /*Matrix Structure Functions*/
@@ -466,15 +519,15 @@ void read_input_file(FILE *filein, Matrix *M)
 
     _id = 0;
     M->Matrix = (Cell ***)malloc(M->n * (sizeof(Cell **))); /*Allocate Memory for the lines of the Matrix*/
-    assert(M->Matrix == NULL);
+    assert(M->Matrix != NULL);
     for (i = 0; i < M->n; i++)
     {
         M->Matrix[i] = (Cell **)malloc(M->m * (sizeof(Cell *))); /*Allocate Memory for the columns of the Matrix*/
-        assert(M->Matrix[i] == NULL);
+        assert(M->Matrix[i] != NULL);
         for (j = 0; j < M->m; j++)
         {
             M->Matrix[i][j] = (Cell *)malloc(sizeof(Cell)); /*Allocate Memory for each cell of the Matrix*/
-            assert(M->Matrix[i][j] == NULL);
+            assert(M->Matrix[i][j] != NULL);
 
             /*Read from the file each value*/
             fscanf(filein, "%d", &(M->Matrix[i][j]->height));
@@ -484,7 +537,7 @@ void read_input_file(FILE *filein, Matrix *M)
             _id++;
 
             /*Set up the values for Dijkstra algorithm*/
-            M->Matrix[i][j]->shortest_dist_from_origin = INT_MAX;
+            M->Matrix[i][j]->shortest_dist_from_origin = LONG_MAX;
             M->Matrix[i][j]->visited = 0;
             M->Matrix[i][j]->predecessor = NULL;
         }
@@ -507,7 +560,7 @@ void print_matrix(Matrix *M)
     {
         for (j = 0; j < M->m; j++)
         {
-            fprintf(stdout, "%d|\t", M->Matrix[i][j]->height);
+            fprintf(stdout, "%d\t", M->Matrix[i][j]->height);
         }
         fprintf(stdout, "\n");
     }
@@ -527,7 +580,7 @@ static int is_in_range(int i, int max)
 {
     if (i < 0)
         return 0;
-    if (i > max)
+    if (i >= max)
         return 0;
     return 1;
 }
@@ -535,6 +588,8 @@ static int is_in_range(int i, int max)
 /*
  * Relax Function
  * Verifies if it is possible to improve the minimum path for the node v passing through u
+ * Returns 1 if the path is shortened
+ * Returns 0 otherwise
  *
  * --------------------------
  *
@@ -542,10 +597,10 @@ static int is_in_range(int i, int max)
  * v -> The pointer to the cell of witch you want to "relax" the path
  * M -> The pointer to the Matrix structure containing all the constant costs
  */
-static void Relax(Cell *u, Cell *v, Matrix *M)
+static int Relax(Cell *u, Cell *v, Matrix *M)
 {
-    int relax_value;
-    assert(v == NULL);
+    long int relax_value;
+    assert(v != NULL);
 
     /*The cost of going from the cell u to the cell v*/
     relax_value = M->C_Cell + (M->C_height * ((u->height - v->height) * (u->height - v->height)));
@@ -554,7 +609,9 @@ static void Relax(Cell *u, Cell *v, Matrix *M)
     {
         v->shortest_dist_from_origin = u->shortest_dist_from_origin + relax_value;
         v->predecessor = u;
+        return 1;
     }
+    return 0;
 }
 
 /*
@@ -569,63 +626,68 @@ static void Relax(Cell *u, Cell *v, Matrix *M)
  */
 static void Dijkstra(Matrix *M)
 {
-    MinHeap *Q = minheap_create(M->m + M->n);
+    int i, j;
+    MinHeap *Q = minheap_create(M->m * M->n);
     HeapElem u;
 
-    assert(M == NULL);
+    assert(M != NULL);
 
     /*Set the distance from the surce = 0*/
     M->Matrix[0][0]->shortest_dist_from_origin = 0;
 
-    minheap_insert(Q, M->Matrix[0][0]->id, 0, 0, 0);
+    for (i = 0; i < M->n; i++)
+    {
+        for (j = 0; j < M->m; j++)
+        {
+            /*Insert every node in the priority queue*/
+            minheap_insert(Q,
+                           M->Matrix[i][j]->id,
+                           M->Matrix[i][j]->shortest_dist_from_origin,
+                           j,
+                           i);
+        }
+    }
 
     while (!minheap_is_empty(Q))
     {
+
         u = minheap_delete_min(Q);
-        M->Matrix[u.x_axis][u.y_axis]->visited = 1;
+        M->Matrix[u.y_axis][u.x_axis]->visited = 1;
 
         /*Upper Neighbour Cell*/
         if (is_in_range(u.y_axis - 1, M->n) && !M->Matrix[u.y_axis - 1][u.x_axis]->visited)
         {
-            Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis - 1][u.x_axis], M);
-            minheap_insert(Q,
-                           M->Matrix[u.y_axis - 1][u.x_axis]->id,
-                           M->Matrix[u.y_axis - 1][u.x_axis]->shortest_dist_from_origin,
-                           u.y_axis - 1,
-                           u.x_axis);
+            if (Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis - 1][u.x_axis], M))
+                minheap_change_prio(Q,
+                                    M->Matrix[u.y_axis - 1][u.x_axis]->id,
+                                    M->Matrix[u.y_axis - 1][u.x_axis]->shortest_dist_from_origin);
         }
 
         /*Right Neighbour Cell*/
-        if (is_in_range(u.x_axis + 1, M->n) && !M->Matrix[u.y_axis][u.x_axis + 1]->visited)
+        if (is_in_range(u.x_axis + 1, M->m) && !M->Matrix[u.y_axis][u.x_axis + 1]->visited)
         {
-            Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis][u.x_axis + 1], M);
-            minheap_insert(Q,
-                           M->Matrix[u.y_axis][u.x_axis + 1]->id,
-                           M->Matrix[u.y_axis][u.x_axis + 1]->shortest_dist_from_origin,
-                           u.y_axis,
-                           u.x_axis + 1);
+            if (Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis][u.x_axis + 1], M))
+                minheap_change_prio(Q,
+                                    M->Matrix[u.y_axis][u.x_axis + 1]->id,
+                                    M->Matrix[u.y_axis][u.x_axis + 1]->shortest_dist_from_origin);
         }
 
         /*Lower Neighbour Cell*/
         if (is_in_range(u.y_axis + 1, M->n) && !M->Matrix[u.y_axis + 1][u.x_axis]->visited)
         {
-            Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis + 1][u.x_axis], M);
-            minheap_insert(Q,
-                           M->Matrix[u.y_axis + 1][u.x_axis]->id,
-                           M->Matrix[u.y_axis + 1][u.x_axis]->shortest_dist_from_origin,
-                           u.y_axis + 1,
-                           u.x_axis);
+            if (Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis + 1][u.x_axis], M))
+                minheap_change_prio(Q,
+                                    M->Matrix[u.y_axis + 1][u.x_axis]->id,
+                                    M->Matrix[u.y_axis + 1][u.x_axis]->shortest_dist_from_origin);
         }
 
         /*Left Neighbour Cell*/
-        if (is_in_range(u.x_axis - 1, M->n) && !M->Matrix[u.y_axis][u.x_axis - 1]->visited)
+        if (is_in_range(u.x_axis - 1, M->m) && !M->Matrix[u.y_axis][u.x_axis - 1]->visited)
         {
-            Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis][u.x_axis - 1], M);
-            minheap_insert(Q,
-                           M->Matrix[u.y_axis][u.x_axis - 1]->id,
-                           M->Matrix[u.y_axis][u.x_axis - 1]->shortest_dist_from_origin,
-                           u.y_axis,
-                           u.x_axis - 1);
+            if (Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis][u.x_axis - 1], M))
+                minheap_change_prio(Q,
+                                    M->Matrix[u.y_axis][u.x_axis - 1]->id,
+                                    M->Matrix[u.y_axis][u.x_axis - 1]->shortest_dist_from_origin);
         }
     }
 
@@ -634,7 +696,7 @@ static void Dijkstra(Matrix *M)
 
 static void print_solution_rec(Cell *cell, FILE *output_file, int *n, int *m)
 {
-    assert(cell == NULL);
+    assert(cell != NULL);
     if (cell->id != 0)
         print_solution_rec(cell->predecessor, output_file, n, m);
 
@@ -642,7 +704,13 @@ static void print_solution_rec(Cell *cell, FILE *output_file, int *n, int *m)
 }
 static void print_solution(Matrix *M, FILE *output_file)
 {
-    assert(M == NULL);
+    assert(M != NULL);
+
+    /*
+    print_matrix(M);
+
+    fprintf(stdout, "last cell: id_%d, height_%d, dist-from-origin_%ld\n", M->Matrix[M->n - 1][M->m - 1]->id, M->Matrix[M->n - 1][M->m - 1]->height, M->Matrix[M->n - 1][M->m - 1]->shortest_dist_from_origin);
+    */
 
     print_solution_rec(M->Matrix[M->n - 1][M->m - 1], output_file, &(M->n), &(M->m));
     fprintf(output_file, "%d %d\n", -1, -1);
