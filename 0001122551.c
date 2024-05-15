@@ -700,7 +700,7 @@ static void print_solution_rec(Cell *cell, FILE *output_file, int *n, int *m)
     if (cell->id != 0)
         print_solution_rec(cell->predecessor, output_file, n, m);
 
-    fprintf(output_file, "%d %d:%d\n", (int)(cell->id / *(n)), cell->id % *(m), cell->id);
+    fprintf(output_file, "%d %d:%d\n", (int)(cell->id / *(m)), cell->id % *(n), cell->id);
 }
 static void print_solution(Matrix *M, FILE *output_file)
 {
