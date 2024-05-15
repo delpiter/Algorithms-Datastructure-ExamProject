@@ -702,6 +702,7 @@ static void print_solution_rec(Cell *cell, FILE *output_file, int *n, int *m)
 
     fprintf(output_file, "%d %d:%d\n", (int)(cell->id / *(m)), cell->id % *(n), cell->id);
 }
+/*nah dog*/
 static void print_solution(Matrix *M, FILE *output_file)
 {
     assert(M != NULL);
