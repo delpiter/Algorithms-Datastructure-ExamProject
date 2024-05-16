@@ -42,8 +42,11 @@ typedef struct
 /*Matrix Structure*/
 typedef struct Cell
 {
-    int id;
-    int height;
+    int id;     /*The id of the cell for the min heap structure*/
+    int height; /*Constant of the cell*/
+    /*Coordinates of the cell*/
+    int x;
+    int y;
     char visited;
     long int shortest_dist_from_origin;
     struct Cell *predecessor;
@@ -54,37 +57,12 @@ typedef struct Matrix
 {
     int C_Cell;
     int C_height;
-    int n; /*Number of Lines*/
-    int m; /*Number of Columns*/
-    Cell ***Matrix;
+    int n;          /*Number of Lines*/
+    int m;          /*Number of Columns*/
+    Cell ***Matrix; /*The actual matrix (nrows, ncols of cell structure)*/
 } Matrix;
 
 /*Min-Heap Structure Functions*/
-
-void minheap_print(const MinHeap *h)
-{
-    int i, j, width = 1;
-
-    assert(h != NULL);
-
-    printf("\n** Contenuto dello heap:\n\n");
-    printf("n=%d size=%d\n", h->n, h->size);
-    printf("Contenuto dell'array heap[] (stampato a livelli):\n");
-    i = 0;
-    while (i < h->n)
-    {
-        j = 0;
-        while (j < width && i < h->n)
-        {
-            printf("h[%2d]=(%2d:%2d, %ld) ", i, h->heap[i].y_axis, h->heap[i].x_axis, h->heap[i].prio); /*printf("h[%2d]=(%2d, %6.2ld) ", i, h->heap[i].key, h->heap[i].prio);*/
-            i++;
-            j++;
-        }
-        printf("\n");
-        width *= 2;
-    }
-    printf("\n\n** Fine contenuto dello heap\n\n");
-}
 
 /*
  * Clears all the Min-Heap Structure
@@ -327,9 +305,6 @@ static void move_down(MinHeap *h, int i)
 
     assert(valid(h, i));
 
-    /* L'operazione viene implementata iterativamente, sebbene sia
-       possibile una implementazione ricorsiva probabilmente più
-       leggibile. */
     do
     {
         const int dst = min_child(h, i);
@@ -346,23 +321,6 @@ static void move_down(MinHeap *h, int i)
 }
 
 /*
- * Dynamically increases the max size of the heap
- *
- * --------------------------
- *
- * h -> The pointer to the minheap Structure
- */
-/*static void minheap_increase_space(MinHeap *h)
-{
-    assert(h != NULL);
-
-    h->heap = (HeapElem *)realloc(h->heap, (h->size + 15) * sizeof(*(h->heap)));
-    h->size = h->size + 15;
-
-    assert(h != NULL);
-}*/
-
-/*
  * Inserts a new element (key, prio) in the heap structure
  *
  * --------------------------
@@ -374,10 +332,6 @@ static void move_down(MinHeap *h, int i)
 void minheap_insert(MinHeap *h, int key, long int prio, int x, int y)
 {
     int i;
-
-    /*if (minheap_is_full(h))
-        minheap_increase_space(h);
-    */
 
     assert(!minheap_is_full(h));
     assert((key >= 0) && (key < h->size));
@@ -471,6 +425,8 @@ Matrix *matrix_init()
 
     M = (Matrix *)malloc(sizeof(Matrix));
 
+    assert(M != NULL);
+
     M->Matrix = NULL;
 
     return M;
@@ -491,11 +447,16 @@ void matrix_free(Matrix *M)
     {
         for (j = 0; j < M->m; j++)
         {
+            /*Free each cell*/
             free(M->Matrix[i][j]);
         }
+        /*Free the array representing the row*/
         free(M->Matrix[i]);
     }
+    /*Free the array of arrays*/
     free(M->Matrix);
+
+    /*Free the entire structure*/
     free(M);
 }
 
@@ -536,33 +497,15 @@ void read_input_file(FILE *filein, Matrix *M)
             M->Matrix[i][j]->id = _id;
             _id++;
 
+            /*Set the coordinates of the matrix, for faster access later in the algorithm*/
+            M->Matrix[i][j]->y = i;
+            M->Matrix[i][j]->x = j;
+
             /*Set up the values for Dijkstra algorithm*/
             M->Matrix[i][j]->shortest_dist_from_origin = LONG_MAX;
             M->Matrix[i][j]->visited = 0;
             M->Matrix[i][j]->predecessor = NULL;
         }
-    }
-}
-
-/*
- * Prints the contents of the matrix structure
- */
-void print_matrix(Matrix *M)
-{
-    int i, j;
-
-    fprintf(stdout, "C_cell: %d\n", M->C_Cell);
-    fprintf(stdout, "C_height: %d\n", M->C_height);
-    fprintf(stdout, "n: %d\n", M->n);
-    fprintf(stdout, "m: %d\n", M->m);
-
-    for (i = 0; i < M->n; i++)
-    {
-        for (j = 0; j < M->m; j++)
-        {
-            fprintf(stdout, "%d\t", M->Matrix[i][j]->height);
-        }
-        fprintf(stdout, "\n");
     }
 }
 
@@ -605,6 +548,7 @@ static int Relax(Cell *u, Cell *v, Matrix *M)
     /*The cost of going from the cell u to the cell v*/
     relax_value = M->C_Cell + (M->C_height * ((u->height - v->height) * (u->height - v->height)));
 
+    /*Update the cost of the cell if the path can be shortened*/
     if (v->shortest_dist_from_origin > u->shortest_dist_from_origin + relax_value)
     {
         v->shortest_dist_from_origin = u->shortest_dist_from_origin + relax_value;
@@ -635,6 +579,7 @@ static void Dijkstra(Matrix *M)
     /*Set the distance from the surce = 0*/
     M->Matrix[0][0]->shortest_dist_from_origin = M->C_Cell;
 
+    /*Inizialize the priority queue*/
     for (i = 0; i < M->n; i++)
     {
         for (j = 0; j < M->m; j++)
@@ -650,13 +595,15 @@ static void Dijkstra(Matrix *M)
 
     while (!minheap_is_empty(Q))
     {
-
+        /*Extraxct the node with the lowest distance from the source*/
         u = minheap_delete_min(Q);
+        /*Cannot visit this node anymore (just a little speed up)*/
         M->Matrix[u.y_axis][u.x_axis]->visited = 1;
 
         /*Upper Neighbour Cell*/
         if (is_in_range(u.y_axis - 1, M->n) && !M->Matrix[u.y_axis - 1][u.x_axis]->visited)
         {
+            /*If the path can be shortened, update the min heap structure*/
             if (Relax(M->Matrix[u.y_axis][u.x_axis], M->Matrix[u.y_axis - 1][u.x_axis], M))
                 minheap_change_prio(Q,
                                     M->Matrix[u.y_axis - 1][u.x_axis]->id,
@@ -691,37 +638,49 @@ static void Dijkstra(Matrix *M)
         }
     }
 
+    /*Frees the memory allocated for the min heap structure*/
     minheap_destroy(Q);
 }
 
-static void print_solution_rec(Cell *cell, FILE *output_file, int *n, int *m)
+/*
+ * Recursively print the best path
+ *
+ * --------------------------
+ *
+ * cell -> The cell that should be printed
+ * output_file -> The stream where the output should be printed
+ */
+static void print_solution_rec(Cell *cell, FILE *output_file)
 {
     assert(cell != NULL);
     if (cell->id != 0)
-        print_solution_rec(cell->predecessor, output_file, n, m);
+        print_solution_rec(cell->predecessor, output_file);
 
-    fprintf(output_file, "%d %d:%d\n", (int)(cell->id / *(m)), cell->id % *(n), cell->id);
+    fprintf(output_file, "%d %d\n", cell->y, cell->x);
 }
-/*nah dog*/
+
+/*
+ * Prints the final solution with a precise format
+ *
+ * --------------------------
+ *
+ * M -> The pointer to the matrix structure
+ * output_file -> The file stream where the output should be printed (default: stdout)
+ */
 static void print_solution(Matrix *M, FILE *output_file)
 {
     assert(M != NULL);
 
-    /*
-    print_matrix(M);
-
-    fprintf(stdout, "last cell: id_%d, height_%d, dist-from-origin_%ld\n", M->Matrix[M->n - 1][M->m - 1]->id, M->Matrix[M->n - 1][M->m - 1]->height, M->Matrix[M->n - 1][M->m - 1]->shortest_dist_from_origin);
-    */
-
-    print_solution_rec(M->Matrix[M->n - 1][M->m - 1], output_file, &(M->n), &(M->m));
+    /*Recursively Print the solution*/
+    print_solution_rec(M->Matrix[M->n - 1][M->m - 1], output_file);
     fprintf(output_file, "%d %d\n", -1, -1);
-    fprintf(output_file, "%ld", M->Matrix[M->n - 1][M->m - 1]->shortest_dist_from_origin);
+    fprintf(output_file, "%ld\n", M->Matrix[M->n - 1][M->m - 1]->shortest_dist_from_origin);
 }
 
 int main(int argc, char *argv[])
 {
     FILE *filein;
-    FILE *fileout = stdout;
+    FILE *fileout = stdout; /*fopen("solution.out", "w")*/
 
     /*The Matrix used to calculate the best path*/
     Matrix *M = matrix_init();
@@ -743,40 +702,19 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
     }
-
+    /*Load all information*/
     read_input_file(filein, M);
 
     fclose(filein);
 
+    /*Compute Solution*/
     Dijkstra(M);
 
+    /*Print Solution*/
     print_solution(M, fileout);
 
-    /*print_matrix(M);*/
-
+    /*Empty Memory*/
     matrix_free(M);
 
     return EXIT_SUCCESS;
 }
-
-/*
- * Function used to test the program in debug mode
- *
- * --------------------------
- *
- * There are no parameters in input, the input file is forced inside the code
- */
-/*int main()
-{
-    char* file_name = "test0.in";
-    int *memLeakTest = (int *)malloc(10 * sizeof(int));
-    int a;
-    FILE *pFile;
-
-    printf("Hello, World!");
-
-    memLeakTest[0] = 5;
-    a = memLeakTest[0];
-    memLeakTest[1] = a;
-
-}*/
