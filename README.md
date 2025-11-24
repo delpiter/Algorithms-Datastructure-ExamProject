@@ -101,7 +101,6 @@ The repository may be organized as follows:
 │── src/
 │   └── <your_source_file>.c
 │── input/     # sample input files
-│── output/    # sample expected outputs
 │── README.md
 ```
 
